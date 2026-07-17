@@ -19,11 +19,15 @@ import (
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/musicbrainz"
+	"github.com/navidrome/navidrome/core/onetagger"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/core/ytdlp"
+	"github.com/navidrome/navidrome/core/ytimport"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
@@ -82,8 +86,12 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	watcher := scanner.GetWatcher(dataStore, modelScanner)
 	library := core.NewLibrary(dataStore, modelScanner, watcher, broker, manager)
 	user := core.NewUser(dataStore, manager)
-	maintenance := core.NewMaintenance(dataStore)
-	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, imageUploadService)
+	maintenance := core.NewMaintenance(dataStore, modelScanner)
+	ytDlp := ytdlp.New()
+	oneTagger := onetagger.New()
+	client := musicbrainz.New()
+	service := ytimport.New(dataStore, modelScanner, ytDlp, oneTagger, client)
+	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, imageUploadService, service)
 	return router
 }
 

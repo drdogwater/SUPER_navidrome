@@ -52,6 +52,13 @@
         "playNext": "Play Next",
         "info": "Get Info",
         "instantMix": "Instant Mix"
+      },
+      "messages": {
+        "deleteConfirm": "This will permanently delete the file(s) from disk, not just remove them from the library. This cannot be undone. Are you sure?"
+      },
+      "notifications": {
+        "deleted": "Song(s) deleted",
+        "deleteError": "Could not delete the selected song(s)"
       }
     },
     "album": {
@@ -103,6 +110,13 @@
         "mostPlayed": "Most Played",
         "starred": "Favourites",
         "topRated": "Top Rated"
+      },
+      "messages": {
+        "deleteConfirm": "This will permanently delete every track's file from disk, not just remove the album from the library. This cannot be undone. Are you sure?"
+      },
+      "notifications": {
+        "deleted": "Album deleted",
+        "deleteError": "Could not delete this album"
       }
     },
     "artist": {
@@ -636,7 +650,56 @@
     "albumList": "Albums",
     "playlists": "Playlists",
     "sharedPlaylists": "Shared Playlists",
+    "fileAccess": "File Access",
+    "youtubeDownload": "Youtube Download",
     "about": "About"
+  },
+  "youtube": {
+    "pageTitle": "Youtube Download",
+    "urlLabel": "Youtube video or playlist URL",
+    "urlPlaceholder": "https://www.youtube.com/watch?v=... or .../playlist?list=...",
+    "downloadButton": "Download",
+    "discardButton": "Discard All",
+    "confirmButton": "Add Selected to Library",
+    "tryAgainButton": "Try Again",
+    "reviewTitle": "Review the tags before adding these tracks to your library",
+    "includeLabel": "Include",
+    "trackErrorLabel": "Could not read tags for this file",
+    "coverAltLabel": "Album cover",
+    "addCoverButton": "Add Cover",
+    "changeCoverButton": "Change Cover",
+    "status": {
+      "downloading": "Downloading audio from Youtube...",
+      "tagging": "Auto-tagging with OneTagger...",
+      "failed": "Something went wrong"
+    },
+    "notifications": {
+      "confirmed": "Selected tracks added to your library",
+      "rejected": "Download discarded",
+      "startError": "Could not start Youtube download",
+      "confirmError": "Could not add tracks to the library",
+      "statusError": "Could not fetch download status",
+      "coverUploadError": "Could not upload cover image",
+      "albumApplied": "Album applied to all tracks",
+      "albumApplyError": "Could not find that album on MusicBrainz"
+    },
+    "album": {
+      "title": "Is this playlist an album?",
+      "description": "OneTagger's per-track guesses are shown below. Pick the album this playlist matches (or enter it manually) to re-tag every track's title, track number, artist, genre and year from its real tracklist.",
+      "candidateSubtitle": "%{artist} (%{smart_count} track matched) |||| %{artist} (%{smart_count} tracks matched)",
+      "unknownArtist": "Unknown Artist",
+      "customOption": "None of these - enter manually",
+      "applyButton": "Apply Album"
+    },
+    "fields": {
+      "title": "Title",
+      "artist": "Artist",
+      "album": "Album",
+      "albumArtist": "Album Artist",
+      "genre": "Genre",
+      "year": "Year",
+      "trackNumber": "Track #"
+    }
   },
   "player": {
     "playListsText": "Play Queue",

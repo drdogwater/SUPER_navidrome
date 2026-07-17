@@ -25,7 +25,7 @@ var _ = Describe("Maintenance", func() {
 
 		ds = createTestDataStore()
 		mfRepo = ds.MockedMediaFile.(*extendedMediaFileRepo)
-		service = NewMaintenance(ds)
+		service = NewMaintenance(ds, tests.NewMockScanner())
 	})
 
 	Describe("DeleteMissingFiles", func() {

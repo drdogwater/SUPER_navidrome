@@ -43,6 +43,7 @@ const defaultConfig = {
   separator: '/',
   enableInspect: true,
   pluginsEnabled: true,
+  enableYoutubeDownload: true,
 }
 
 let config

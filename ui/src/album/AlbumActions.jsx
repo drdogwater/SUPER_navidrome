@@ -6,6 +6,7 @@ import {
   sanitizeListRestProps,
   TopToolbar,
   useRecordContext,
+  usePermissions,
   useTranslate,
 } from 'react-admin'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
@@ -28,6 +29,7 @@ import {
 import { formatBytes } from '../utils'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
+import DeleteAlbumButton from './DeleteAlbumButton'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
@@ -55,6 +57,8 @@ const AlbumActions = ({
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const { permissions } = usePermissions()
+  const isAdmin = permissions === 'admin'
 
   const handlePlay = React.useCallback(() => {
     dispatch(playTracks(data, ids))
@@ -138,6 +142,7 @@ const AlbumActions = ({
               <CloudDownloadOutlinedIcon />
             </AlbumButton>
           )}
+          {isAdmin && <DeleteAlbumButton record={record} />}
         </div>
         <div>{isNotSmall && <ToggleFieldsMenu resource="albumSong" />}</div>
       </div>

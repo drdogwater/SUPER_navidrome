@@ -3,7 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,16 +22,22 @@ type Maintenance interface {
 	DeleteMissingFiles(ctx context.Context, ids []string) error
 	// DeleteAllMissingFiles deletes all files marked as missing
 	DeleteAllMissingFiles(ctx context.Context) error
+	// DeleteMediaFiles deletes specific tracks from disk and the library
+	DeleteMediaFiles(ctx context.Context, ids []string) error
+	// DeleteAlbums deletes every track of the given albums from disk and the library
+	DeleteAlbums(ctx context.Context, albumIDs []string) error
 }
 
 type maintenanceService struct {
-	ds model.DataStore
-	wg sync.WaitGroup
+	ds      model.DataStore
+	scanner model.Scanner
+	wg      sync.WaitGroup
 }
 
-func NewMaintenance(ds model.DataStore) Maintenance {
+func NewMaintenance(ds model.DataStore, scanner model.Scanner) Maintenance {
 	return &maintenanceService{
-		ds: ds,
+		ds:      ds,
+		scanner: scanner,
 	}
 }
 
@@ -38,6 +47,72 @@ func (s *maintenanceService) DeleteMissingFiles(ctx context.Context, ids []strin
 
 func (s *maintenanceService) DeleteAllMissingFiles(ctx context.Context) error {
 	return s.deleteMissing(ctx, nil)
+}
+
+// DeleteMediaFiles deletes specific tracks: removes each file from disk, then purges
+// the corresponding library records.
+func (s *maintenanceService) DeleteMediaFiles(ctx context.Context, ids []string) error {
+	mfs, err := s.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": ids}})
+	if err != nil {
+		return fmt.Errorf("loading tracks: %w", err)
+	}
+	if len(mfs) == 0 {
+		return model.ErrNotFound
+	}
+	return s.deleteFilesAndPurge(ctx, mfs)
+}
+
+// DeleteAlbums deletes every track belonging to the given albums: removes each file
+// from disk, then purges the corresponding library records.
+func (s *maintenanceService) DeleteAlbums(ctx context.Context, albumIDs []string) error {
+	mfs, err := s.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": albumIDs}})
+	if err != nil {
+		return fmt.Errorf("loading album tracks: %w", err)
+	}
+	if len(mfs) == 0 {
+		return model.ErrNotFound
+	}
+	return s.deleteFilesAndPurge(ctx, mfs)
+}
+
+// deleteFilesAndPurge removes each track's file from disk (e.g. a file on a read-only
+// mount fails here and is reported back, not silently dropped), triggers a scoped
+// rescan of the affected folders so the scanner marks the removed files as missing,
+// then reuses deleteMissing to purge those now-missing rows (GC + stats refresh).
+func (s *maintenanceService) deleteFilesAndPurge(ctx context.Context, mfs model.MediaFiles) error {
+	ids := make([]string, 0, len(mfs))
+	targetSet := map[model.ScanTarget]struct{}{}
+	var deleteErrs []string
+	for _, mf := range mfs {
+		if err := os.Remove(mf.AbsolutePath()); err != nil && !os.IsNotExist(err) {
+			log.Warn(ctx, "Error deleting file from disk", "id", mf.ID, "path", mf.AbsolutePath(), err)
+			deleteErrs = append(deleteErrs, fmt.Sprintf("%s: %v", mf.Path, err))
+			continue
+		}
+		ids = append(ids, mf.ID)
+		targetSet[model.ScanTarget{LibraryID: mf.LibraryID, FolderPath: filepath.Dir(mf.Path)}] = struct{}{}
+	}
+
+	if len(ids) == 0 {
+		return fmt.Errorf("could not delete any files: %s", strings.Join(deleteErrs, "; "))
+	}
+
+	targets := make([]model.ScanTarget, 0, len(targetSet))
+	for t := range targetSet {
+		targets = append(targets, t)
+	}
+	if _, err := s.scanner.ScanFolders(ctx, false, targets); err != nil {
+		return fmt.Errorf("rescanning after delete: %w", err)
+	}
+
+	if err := s.deleteMissing(ctx, ids); err != nil {
+		return err
+	}
+
+	if len(deleteErrs) > 0 {
+		return fmt.Errorf("some files could not be deleted: %s", strings.Join(deleteErrs, "; "))
+	}
+	return nil
 }
 
 // deleteMissing handles the deletion of missing files and triggers necessary cleanup operations

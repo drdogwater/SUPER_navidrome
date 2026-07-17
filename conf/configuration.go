@@ -72,6 +72,11 @@ type configOptions struct {
 	FFmpegPath                      string
 	MPVPath                         string
 	MPVCmdTemplate                  string
+	YtDlpPath                       string
+	OneTaggerPath                   string
+	EnableYoutubeDownload           bool
+	YoutubeDownloadStagingFolder    string
+	OneTaggerPlatforms              string
 	CoverArtPriority                string
 	CoverArtQuality                 int
 	EnableWebPEncoding              bool
@@ -785,6 +790,11 @@ func setViperDefaults() {
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("mpvpath", "")
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display %f --input-ipc-server=%s")
+	viper.SetDefault("ytdlppath", "")
+	viper.SetDefault("onetaggerpath", "")
+	viper.SetDefault("enableyoutubedownload", true)
+	viper.SetDefault("youtubedownloadstagingfolder", "")
+	viper.SetDefault("onetaggerplatforms", "musicbrainz")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverartquality", 75)
 	viper.SetDefault("enablewebpencoding", false)

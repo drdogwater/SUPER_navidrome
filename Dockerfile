@@ -154,25 +154,65 @@ COPY --from=build /out /
 
 ########################################################################################################################
 ### Build Final Image
-FROM public.ecr.aws/docker/library/alpine:3.20 AS final
+#
+# Debian (glibc) instead of upstream Navidrome's Alpine base: the "Youtube Download"
+# feature's onetagger-cli dependency only ships a glibc-linked binary (no musl build),
+# and Alpine's gcompat glibc shim is incomplete (fails to resolve __res_init) so it
+# can't run onetagger-cli even with the compat package installed. Since this stage
+# needs glibc anyway, it reuses the static-glibc navidrome binary the "build" stage
+# below already produces for standalone distribution, rather than build-alpine's
+# musl one.
+FROM public.ecr.aws/docker/library/debian:bookworm-slim AS final
 LABEL maintainer="deluan@navidrome.org"
 LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 
-# Install runtime dependencies
-# - libwebp + symlinks: enables native WebP encoding via purego/dlopen
-RUN apk add -U --no-cache ffmpeg mpv sqlite libwebp libwebpdemux libwebpmux && \
-    for lib in libwebp libwebpdemux libwebpmux; do \
-        target=$(ls /usr/lib/$lib.so.* 2>/dev/null | head -1) && \
-        [ -n "$target" ] && ln -sf "$target" /usr/lib/$lib.so; \
-    done
+ARG TARGETARCH
+ARG YTDLP_VERSION=2026.07.04
+ARG ONETAGGER_VERSION=1.7.0
 
-# Copy navidrome binary (musl build for Docker, enables native libwebp)
-COPY --from=build-alpine /out/navidrome /app/
+# Install runtime dependencies:
+# - ffmpeg/mpv/sqlite3: same as upstream's Alpine image
+# - libwebp7 + symlink: enables native WebP encoding via purego/dlopen
+# - libasound2: required by onetagger-cli (links libasound.so.2)
+# - yt-dlp: official standalone binary (curl'd below), not the stale apt package
+# - onetagger-cli: auto-tags files downloaded via the Youtube Download feature;
+#   upstream only publishes an amd64 build, so it's skipped (with a warning) on
+#   other architectures rather than failing the whole image build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ffmpeg mpv sqlite3 libwebp7 libasound2 ca-certificates curl && \
+    target=$(ls /usr/lib/*/libwebp.so.* 2>/dev/null | head -1) && \
+    [ -n "$target" ] && ln -sf "$target" "$(dirname "$target")/libwebp.so"; \
+    case "${TARGETARCH}" in \
+        amd64) YTDLP_ASSET=yt-dlp_linux ;; \
+        arm64) YTDLP_ASSET=yt-dlp_linux_aarch64 ;; \
+        *) echo "ERROR: no yt-dlp binary published for ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
+    curl -sL -o /usr/local/bin/yt-dlp \
+        "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/${YTDLP_ASSET}" && \
+    chmod +x /usr/local/bin/yt-dlp && \
+    if [ "${TARGETARCH}" = "amd64" ]; then \
+        curl -sL "https://github.com/Marekkon5/onetagger/releases/download/${ONETAGGER_VERSION}/OneTagger-linux-cli.tar.gz" \
+            | tar xz -C /usr/local/bin && \
+        chmod +x /usr/local/bin/onetagger-cli; \
+    else \
+        echo "WARNING: no onetagger-cli build published for ${TARGETARCH}; the Youtube Download tagging step will be unavailable." >&2; \
+    fi && \
+    apt-get purge -y curl && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy navidrome binary (static glibc build, compatible with this Debian-based image)
+COPY --from=build /out/navidrome /app/
 
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER=/music
 ENV ND_DATAFOLDER=/data
 ENV ND_CONFIGFILE=/data/navidrome.toml
+# onetagger-cli writes its log/settings to $HOME/.config/OneTagger. The container
+# typically runs as a numeric UID with no /etc/passwd entry (see docker-compose.yml's
+# `user:`), which makes Docker default HOME to "/" — not writable by that UID. /tmp is
+# writable by any user, and OneTagger doesn't need these files to persist since every
+# invocation passes its options via CLI flags.
+ENV HOME=/tmp
 ENV ND_PORT=4533
 RUN touch /.nddockerenv
 

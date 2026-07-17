@@ -8,10 +8,14 @@ import (
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/musicbrainz"
+	"github.com/navidrome/navidrome/core/onetagger"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/core/ytdlp"
+	"github.com/navidrome/navidrome/core/ytimport"
 )
 
 var Set = wire.NewSet(
@@ -32,6 +36,10 @@ var Set = wire.NewSet(
 	matcher.New,
 	wire.Bind(new(external.Agents), new(*agents.Agents)),
 	ffmpeg.New,
+	ytdlp.New,
+	onetagger.New,
+	musicbrainz.New,
+	ytimport.New,
 	scrobbler.GetPlayTracker,
 	playback.GetInstance,
 	metrics.GetInstance,

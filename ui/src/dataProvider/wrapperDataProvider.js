@@ -91,6 +91,16 @@ const callDeleteMany = (resource, params) => {
   }).then((response) => ({ data: response.json.ids || [] }))
 }
 
+// song/album deletion also removes the underlying file, so it goes through the same
+// query-param bulk endpoint as 'missing' rather than a REST-conventional /{id} route.
+const deletableAsBulk = (resource) => resource === 'song' || resource === 'album'
+
+const callDeleteOne = (resource, id) => {
+  return httpClient(`${REST_URL}/${resource}?id=${id}`, {
+    method: 'DELETE',
+  }).then((response) => ({ data: response.json }))
+}
+
 // Helper function to handle user-library associations
 const handleUserLibraryAssociation = async (userId, libraryIds) => {
   if (!libraryIds || libraryIds.length === 0) {
@@ -196,11 +206,14 @@ const wrapperDataProvider = {
   },
   delete: (resource, params) => {
     const [r, p] = mapResource(resource, params)
+    if (deletableAsBulk(r)) {
+      return callDeleteOne(r, params.id)
+    }
     return dataProvider.delete(r, p)
   },
   deleteMany: (resource, params) => {
     const [r, p] = mapResource(resource, params)
-    if (r.endsWith('/tracks') || resource === 'missing') {
+    if (r.endsWith('/tracks') || resource === 'missing' || deletableAsBulk(r)) {
       return callDeleteMany(r, p)
     }
     return dataProvider.deleteMany(r, p)

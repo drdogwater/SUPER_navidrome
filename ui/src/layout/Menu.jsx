@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
+import CloudDownloadIcon from '@material-ui/icons/CloudDownload'
 import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
@@ -58,6 +59,7 @@ const Menu = ({ dense = false }) => {
     menuAlbumList: true,
     menuPlaylists: true,
     menuSharedPlaylists: true,
+    menuFileAccess: true,
   })
 
   const handleToggle = (menu) => {
@@ -126,6 +128,25 @@ const Menu = ({ dense = false }) => {
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      {config.enableYoutubeDownload && (
+        <SubMenu
+          handleToggle={() => handleToggle('menuFileAccess')}
+          isOpen={state.menuFileAccess}
+          sidebarIsOpen={open}
+          name="menu.fileAccess"
+          icon={<CloudDownloadIcon />}
+          dense={dense}
+        >
+          <MenuItemLink
+            to="/youtube-download"
+            activeClassName={classes.active}
+            primaryText={translate('menu.youtubeDownload')}
+            leftIcon={<CloudDownloadIcon />}
+            sidebarIsOpen={open}
+            dense={dense}
+          />
+        </SubMenu>
+      )}
       {config.devSidebarPlaylists && open ? (
         <>
           <Divider />
